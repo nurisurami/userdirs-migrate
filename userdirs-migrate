@@ -1,0 +1,103 @@
+#!/bin/sh
+# userdirs-migrate: migrate user directories to another partition
+# Author: Dmitry "nimms" Nurislamov <nurisurami@ya.ru>
+
+# Example:
+#   /home/user/Downloads -> /hdd/user/Downloads
+#   /home/user/Music -> /hdd/user/Music
+#   ...
+
+XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+tmpfile=/tmp/userdirs-migrate.$$
+
+print_usage() {
+cat <<EOF
+Usage: userdirs-migrate [-f] target [userdir ...]
+target
+	Directory the target partition is mounted to.
+userdir
+	XDG user directory that needs to be migrated;
+	names are listed in xdg-user-dir(1).
+-f, --force
+	Force overwriting symlinks and directories if they already exist.
+
+The script needs to be run as a user whose user directories need to be moved.
+EOF
+} >&2
+
+error_nosuchdir() {
+	echo "ERROR: $1: no such directory."
+} >&2
+
+warn_symlink() {
+	echo "WARNING: $1: already a symlink;"
+	echo "to overwrite anyway, use the -f parameter."
+} >&2
+
+warn_direxists() {
+	echo "WARNING: $1: directory already exists;"
+	echo "to overwrite anyway, use the -f parameter."
+} >&2
+
+
+# Print usage if no arguments passed
+[ $# -eq 0 ] && { print_usage; exit 1; }
+
+# The force parameter
+case $1 in
+-f|--force)	force=1; shift
+esac
+
+# Target directory; exit if doesn't exist
+target=$1
+[ -d $target ] || { error_nosuchdir $target; exit 1; }
+shift
+
+# Default XDG user directories to migrate if not specified directly
+[ $# -eq 0 ] && set DOWNLOAD DOCUMENTS MUSIC PICTURES VIDEOS
+
+# Creating a directory for the user;
+# this part requires root rights
+target_home=$target/$USER
+# Create if doesn't exist
+[ -d $target_home ] || sudo mkdir $target_home
+# Change owner and rights if not writable
+[ -w $target_home ] ||
+	sudo chown $USER:$USER $target_home &&
+	chmod 755 $target_home
+
+for d
+do
+	oldpath=$(xdg-user-dir $d)
+	newpath=$target_home/$(basename "$oldpath")
+	# Already a symlink
+	if [ -L "$oldpath" ]
+	then
+		if [ "$force" ]
+		then
+			ln -sf "$newpath" "$oldpath"
+		else
+			warn_symlink "$oldpath"
+			continue
+		fi
+	# Already exists
+	elif [ -d "$newpath" ]
+	then
+		if [ "$force" ]
+		then
+			mv -f "$oldpath" "$newpath"
+		else
+			warn_direxists "$newpath"
+			continue
+		fi
+	else
+		mv "$oldpath" "$newpath"
+		ln -s "$newpath" "$oldpath"
+	fi
+	# Changing entries in XDG user directories config
+	oldpath=$(echo "$oldpath" | sed "s#$HOME#\$HOME#")
+	sed "s#$oldpath#$newpath#" $XDG_CONFIG_HOME/user-dirs.dirs > $tmpfile
+	mv $tmpfile $XDG_CONFIG_HOME/user-dirs.dirs
+done
+
+xdg-user-dirs-update
