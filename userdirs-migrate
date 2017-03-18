@@ -1,6 +1,10 @@
 #!/bin/sh
-# userdirs-migrate: migrate user directories to another partition
+# userdirs-migrate: migrate XDG user directories to another partition
 # Author: Dmitry "nimms" Nurislamov <nurisurami@ya.ru>
+
+# Version: 20170318.0
+# The latest version can always be found at:
+# https://github.com/nurisurami/userdirs-migrate
 
 # Example:
 #   /home/user/Downloads -> /hdd/user/Downloads
