@@ -2,14 +2,9 @@
 # userdirs-migrate: migrate XDG user directories to another partition
 # Author: Dmitry "nimms" Nurislamov <nurisurami@ya.ru>
 
-# Version: 20170318.1
+# Version: 20170318.3
 # The latest version can always be found at:
 # https://github.com/nurisurami/userdirs-migrate
-
-# Example:
-#   /home/user/Downloads -> /hdd/user/Downloads
-#   /home/user/Music -> /hdd/user/Music
-#   ...
 
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 tmpfile=/tmp/userdirs-migrate.$$
@@ -17,6 +12,7 @@ tmpfile=/tmp/userdirs-migrate.$$
 print_usage() {
 cat <<EOF
 Usage: userdirs-migrate [-f] target [userdir ...]
+
 target
 	Directory the target partition is mounted to.
 userdir
@@ -59,12 +55,10 @@ target=$1
 shift
 
 # Default XDG user directories to migrate if not specified directly
-if [ $# -eq 0 ]
-then
+if [ $# -eq 0 ]; then
 	set DOWNLOAD DOCUMENTS MUSIC PICTURES VIDEOS
 # All existing directories for convenience
-elif [ $1 = "ALL" ]
-then
+elif [ $1 = "ALL" ]; then
 	set DESKTOP DOWNLOAD TEMPLATES PUBLICSHARE \
 		DOCUMENTS MUSIC PICTURES VIDEOS
 fi
@@ -84,20 +78,11 @@ do
 	oldpath=$(xdg-user-dir $d)
 	newpath=$target_home/$(basename "$oldpath")
 	# Already a symlink
-	if [ -L "$oldpath" ]
-	then
-		if [ "$force" ]
-		then
-			ln -sf "$newpath" "$oldpath"
-		else
-			warn_symlink "$oldpath"
-			continue
-		fi
+	if [ -L "$oldpath" ]; then
+		[ "$force" ] || { warn_symlink "$oldpath"; continue; }
 	# Already exists
-	elif [ -d "$newpath" ]
-	then
-		if [ "$force" ]
-		then
+	elif [ -d "$newpath" ]; then
+		if [ "$force" ]; then
 			mv -f "$oldpath" "$newpath"
 		else
 			warn_direxists "$newpath"
@@ -105,8 +90,8 @@ do
 		fi
 	else
 		mv "$oldpath" "$newpath"
-		ln -s "$newpath" "$oldpath"
 	fi
+	ln -sf "$newpath" "$oldpath"
 	# Changing entries in XDG user directories config
 	oldpath=$(echo "$oldpath" | sed "s#$HOME#\$HOME#")
 	sed "s#$oldpath#$newpath#" $XDG_CONFIG_HOME/user-dirs.dirs > $tmpfile
