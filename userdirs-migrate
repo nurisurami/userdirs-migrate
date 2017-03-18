@@ -2,7 +2,7 @@
 # userdirs-migrate: migrate XDG user directories to another partition
 # Author: Dmitry "nimms" Nurislamov <nurisurami@ya.ru>
 
-# Version: 20170318.0
+# Version: 20170318.1
 # The latest version can always be found at:
 # https://github.com/nurisurami/userdirs-migrate
 
@@ -22,6 +22,7 @@ target
 userdir
 	XDG user directory that needs to be migrated;
 	names are listed in xdg-user-dir(1).
+	If you need all of them, you can just specify "ALL" here.
 -f, --force
 	Force overwriting symlinks and directories if they already exist.
 
@@ -58,7 +59,15 @@ target=$1
 shift
 
 # Default XDG user directories to migrate if not specified directly
-[ $# -eq 0 ] && set DOWNLOAD DOCUMENTS MUSIC PICTURES VIDEOS
+if [ $# -eq 0 ]
+then
+	set DOWNLOAD DOCUMENTS MUSIC PICTURES VIDEOS
+# All existing directories for convenience
+elif [ $1 = "ALL" ]
+then
+	set DESKTOP DOWNLOAD TEMPLATES PUBLICSHARE \
+		DOCUMENTS MUSIC PICTURES VIDEOS
+fi
 
 # Creating a directory for the user;
 # this part requires root rights
